@@ -6,6 +6,7 @@ pub mod burn;
 pub mod initialize;
 pub mod mint;
 pub mod new_definition;
+pub mod set_authority;
 pub mod print_nft;
 pub mod transfer;
 

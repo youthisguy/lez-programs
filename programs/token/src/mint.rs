@@ -1,22 +1,19 @@
-use nssa_core::{
+use lee_core::{
     account::{Account, AccountWithMetadata, Data},
-    program::{AccountPostState, Claim, ProgramId},
+    program::{AccountPostState, Claim},
 };
 use token_core::{TokenDefinition, TokenHolding};
 
+#[must_use]
+#[allow(unused_variables)]
 pub fn mint(
     definition_account: AccountWithMetadata,
     user_holding_account: AccountWithMetadata,
     amount_to_mint: u128,
-    token_program_id: ProgramId,
 ) -> Vec<AccountPostState> {
     assert!(
         definition_account.is_authorized,
         "Definition authorization is missing"
-    );
-    assert_eq!(
-        definition_account.account.program_owner, token_program_id,
-        "Token definition must be owned by token program"
     );
 
     let mut definition = TokenDefinition::try_from(&definition_account.account.data)
@@ -40,12 +37,17 @@ pub fn mint(
                 name: _,
                 metadata_id: _,
                 total_supply,
+                mint_authority,
             },
             TokenHolding::Fungible {
                 definition_id: _,
                 balance,
             },
         ) => {
+            assert!(
+                mint_authority.is_some(),
+                "Mint authority has been revoked; supply is fixed"
+            );
             *balance = balance
                 .checked_add(amount_to_mint)
                 .expect("Balance overflow on minting");
