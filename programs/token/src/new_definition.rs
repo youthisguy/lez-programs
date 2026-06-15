@@ -36,6 +36,7 @@ pub fn new_fungible_definition(
         name,
         total_supply,
         metadata_id: None,
+        mint_authority: None,
     };
     let token_holding = TokenHolding::Fungible {
         definition_id: definition_target_account.account_id,
@@ -97,6 +98,7 @@ pub fn new_definition_with_metadata(
                 name,
                 total_supply,
                 metadata_id: Some(metadata_target_account.account_id),
+                mint_authority: None,
             },
             TokenHolding::Fungible {
                 definition_id: definition_target_account.account_id,
@@ -140,5 +142,47 @@ pub fn new_definition_with_metadata(
         AccountPostState::new_claimed(definition_target_account_post, Claim::Authorized),
         AccountPostState::new_claimed(holding_target_account_post, Claim::Authorized),
         AccountPostState::new_claimed(metadata_target_account_post, Claim::Authorized),
+    ]
+}
+
+#[must_use]
+pub fn new_fungible_definition_with_authority(
+    definition_account: lee_core::account::AccountWithMetadata,
+    holding_account: lee_core::account::AccountWithMetadata,
+    name: String,
+    total_supply: u128,
+    mint_authority: Option<lee_core::account::AccountId>,
+) -> Vec<lee_core::program::AccountPostState> {
+    use lee_core::{account::Data, program::{AccountPostState, Claim}};
+    use token_core::{TokenDefinition, TokenHolding};
+
+    assert!(
+        definition_account.is_authorized,
+        "Definition authorization is missing"
+    );
+    assert!(
+        holding_account.is_authorized,
+        "Holding authorization is missing"
+    );
+
+    let definition = TokenDefinition::Fungible {
+        name,
+        total_supply,
+        metadata_id: None,
+        mint_authority,
+    };
+    let holding = TokenHolding::Fungible {
+        definition_id: definition_account.account_id,
+        balance: total_supply,
+    };
+
+    let mut definition_post = definition_account.account;
+    definition_post.data = Data::from(&definition);
+    let mut holding_post = holding_account.account;
+    holding_post.data = Data::from(&holding);
+
+    vec![
+        AccountPostState::new_claimed(definition_post, Claim::Authorized),
+        AccountPostState::new_claimed(holding_post, Claim::Authorized),
     ]
 }
