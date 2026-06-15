@@ -147,13 +147,16 @@ pub fn new_definition_with_metadata(
 
 #[must_use]
 pub fn new_fungible_definition_with_authority(
-    definition_account: lee_core::account::AccountWithMetadata,
-    holding_account: lee_core::account::AccountWithMetadata,
+    definition_account: nssa_core::account::AccountWithMetadata,
+    holding_account: nssa_core::account::AccountWithMetadata,
     name: String,
     total_supply: u128,
-    mint_authority: Option<lee_core::account::AccountId>,
-) -> Vec<lee_core::program::AccountPostState> {
-    use lee_core::{account::Data, program::{AccountPostState, Claim}};
+    mint_authority: Option<nssa_core::account::AccountId>,
+) -> Vec<nssa_core::program::AccountPostState> {
+    use nssa_core::{
+        account::Data,
+        program::{AccountPostState, Claim},
+    };
     use token_core::{TokenDefinition, TokenHolding};
 
     assert!(

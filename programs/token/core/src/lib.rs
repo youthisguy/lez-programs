@@ -77,9 +77,7 @@ pub enum Instruction {
     ///
     /// Required accounts:
     /// - Token Definition account (initialized, authorized).
-    SetAuthority {
-        new_authority: Option<AccountId>,
-    },
+    SetAuthority { new_authority: Option<AccountId> },
 }
 
 #[derive(Serialize, Deserialize)]
