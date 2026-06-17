@@ -1,150 +1,142 @@
-# lez-programs
+# LP-0013: Token Program — Mint Authority
 
-Essential programs for the **Logos Execution Zone (LEZ)** — a zkVM-based execution environment built on [RISC Zero](https://risczero.com/). Programs run inside the RISC Zero zkVM (`riscv32im-risc0-zkvm-elf` target) and interact with the LEZ runtime via the `nssa_core` library.
+This fork of [logos-blockchain/lez-programs](https://github.com/logos-blockchain/lez-programs) adds a mint authority model to the LEZ token program, enabling variable supply tokens, permissioned issuance, and the standard "revoke to fix supply" pattern expected by wallets and DeFi protocols.
 
-## Programs
+For the LP-0013 contribution, what changed, and how to run it — see below.
+For the wallet CLI additions (two new commands: `token new-with-authority` and `token set-authority`) — see the supporting fork: [youthisguy/logos-execution-zone](https://github.com/youthisguy/logos-execution-zone).
+Everything else is the upstream lez-programs codebase.
 
-| Program | Description |
+---
+
+## What was added
+
+- `mint_authority: Option<AccountId>` field on `TokenDefinition::Fungible`
+- `NewFungibleDefinitionWithAuthority` instruction — create a token with a mint authority at initialization
+- `SetAuthority` instruction — rotate authority to a new account, or revoke it permanently by passing `None`
+- Updated `Mint` instruction — enforces the authority check before any state write
+- Fully backwards compatible — the existing `NewFungibleDefinition` instruction is unchanged
+
+The design follows Solana's SPL Token: a single `Option<AccountId>` encodes both who the authority is and whether minting is possible. `None` is self-describing — no authority, no minting, ever.
+
+---
+
+## Repositories
+
+| Repo | Purpose |
 |---|---|
-| **token** | Fungible and non-fungible token program — create definitions, mint/burn tokens, transfer, initialize accounts, print NFTs |
-| **amm** | Constant-product AMM — add/remove liquidity and swap via chained calls to the token program |
-| **ata** | Associated Token Account program — derives and initializes deterministic token holding accounts for a given owner and token definition |
-| **stablecoin** | Collateral-backed position program — open collateral positions as a foundation for stablecoin debt issuance |
-| **twap_oracle** | TWAP oracle — provides canonical on-chain price accounts consumed by other programs (e.g. stablecoin) |
+| [youthisguy/lez-programs](https://github.com/youthisguy/lez-programs) ← **this repo** | Token program changes, `token_core` SDK, integration tests, demo script |
+| [youthisguy/logos-execution-zone](https://github.com/youthisguy/logos-execution-zone) | Sequencer, wallet CLI (`token new-with-authority`, `token set-authority`) |
 
-## Apps
+---
 
-| App | Description |
+## Documentation
+
+| Document | Description |
 |---|---|
-| **amm** | QML-based UI for interacting with the AMM program |
+| [programs/token/README.md](programs/token/README.md) | End-to-end usage: deploy steps, program addresses, CLI instructions for minting, rotating, and revoking authority |
+| [docs/authority-model.md](docs/authority-model.md) | Full design spec: data model, instruction semantics, authority lifecycle diagram, atomicity proof, error codes, authorization model, backwards compatibility, threat model |
+| [artifacts/token-idl.json](artifacts/token-idl.json) | SPEL-generated IDL for the updated token program (regenerate with `cargo run -p idl-gen`) |
 
-## Running Apps
+---
 
-Apps live under `apps/` and are standalone UI applications. Each app has its own `README.md` with full details.
+## Example Integrations
 
-Apps use [Nix](https://nixos.org/) flakes. Enable flakes if you haven't already:
+Two example Rust programs are in [`examples/program_deployment/src/bin/`](examples/program_deployment/src/bin/):
 
-```bash
-mkdir -p ~/.config/nix && echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
-```
+| Example | Description |
+|---|---|
+| [`run_new_token_with_authority.rs`](examples/program_deployment/src/bin/run_new_token_with_authority.rs) | Variable supply token — creates a token with an active mint authority, mints additional supply, then rotates the authority |
+| [`run_new_fixed_supply_token.rs`](examples/program_deployment/src/bin/run_new_fixed_supply_token.rs) | Fixed supply token — creates a token with `mint_authority: None` at initialization; no revocation step needed |
 
-### Example (`apps/amm`)
-
-```bash
-cd apps/amm
-
-# Run the app
-nix run .
-
-# Update pinned dependencies
-nix flake update
-```
-
-## Prerequisites
-
-- **Rust** — install via [rustup](https://rustup.rs/). The pinned toolchain version is set in `rust-toolchain.toml`.
-- **RISC Zero toolchain** — required to build guest ZK binaries:
-
-  ```bash
-  cargo install cargo-risczero
-  cargo risczero install
-  ```
-- **SPEL toolchain** — provides `spel` and `wallet` CLI tools. Install from [logos-co/spel](https://github.com/logos-co/spel).
-- **LEZ** — provides `wallet` CLI. Install from [logos-blockchain/logos-execution-zone](https://github.com/logos-blockchain/logos-execution-zone)
+---
 
 ## Build & Test
 
 ```bash
-# Lint the entire workspace (skips expensive guest ZK builds)
-make clippy
+git clone https://github.com/youthisguy/lez-programs.git
+cd lez-programs
 
-# Format check
-make fmt
+# All tests (skips ZK proof generation)
+RISC0_DEV_MODE=1 cargo test --release
 
-# Run unit tests for all programs (no zkVM, no ZK proof generation)
-RISC0_DEV_MODE=1 cargo test -p token_program -p amm_program -p ata_program -p stablecoin_program -p twap_oracle_program
+# Token unit tests only
+RISC0_DEV_MODE=1 cargo test --release -p token_program
 
-# Run integration tests (dev mode skips ZK proof generation)
-RISC0_DEV_MODE=1 cargo test -p integration_tests
-
-# Run all tests
-make test
+# Token integration tests only
+RISC0_DEV_MODE=1 cargo test --release -p integration_tests --test token
 ```
 
-Integration tests live in `programs/integration_tests/tests/` and cover `token`, `amm`, and `ata` programs end-to-end through the zkVM using `RISC0_DEV_MODE=1` to skip proof generation. Each test file corresponds to a program:
+CI status: [![CI](https://github.com/youthisguy/lez-programs/actions/workflows/ci.yml/badge.svg)](https://github.com/youthisguy/lez-programs/actions)
 
-- `programs/integration_tests/tests/token.rs`
-- `programs/integration_tests/tests/amm.rs`
-- `programs/integration_tests/tests/ata.rs`
+---
 
-`stablecoin` and `twap_oracle` are tested via their own unit tests (`cargo test -p stablecoin_program -p twap_oracle_program`).
+## End-to-End Demo
 
-## Compile Guest Binaries
+The demo script runs the full authority lifecycle against a real local sequencer with `RISC0_DEV_MODE=0`
 
-The guest binaries are compiled to the `riscv32im-risc0-zkvm-elf` target. This requires the RISC Zero toolchain.
+### Prerequisites
+
+Clone and build the supporting repo first:
 
 ```bash
-cargo risczero build --manifest-path <PROGRAM>/methods/guest/Cargo.toml
+git clone https://github.com/youthisguy/logos-execution-zone.git
+cd logos-execution-zone
+cargo build --release
 ```
 
-Binaries are output to:
-
-```
-<PROGRAM>/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/<PROGRAM>.bin
-```
-
-## Deployment
+Start all three services in separate terminals:
 
 ```bash
-# Deploy a program binary to the sequencer
-wallet deploy-program <path-to-binary>
+# Terminal 1 — Bedrock
+cd logos-execution-zone/bedrock && docker compose up
 
-# Example
-wallet deploy-program programs/token/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/token.bin
-wallet deploy-program programs/amm/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/amm.bin
-wallet deploy-program programs/ata/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/ata.bin
-wallet deploy-program programs/stablecoin/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/stablecoin.bin
-wallet deploy-program programs/twap_oracle/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/twap_oracle.bin
+# Terminal 2 — Sequencer (after bedrock shows "proposed block")
+cd logos-execution-zone/lez/sequencer/service
+RUST_LOG=info RISC0_DEV_MODE=0 cargo run --release -p sequencer_service configs/debug/sequencer_config.json
+
+# Terminal 3 — Indexer
+cd logos-execution-zone/lez/indexer/service
+RUST_LOG=info cargo run --release -p indexer_service configs/indexer_config.json
 ```
 
-To inspect the `ProgramId` of a built binary:
+### Run
 
 ```bash
-spel inspect <path-to-binary>
+RISC0_DEV_MODE=0 \
+WALLET_BIN=/path/to/logos-execution-zone/target/release/wallet \
+LEZ_WALLET_HOME_DIR=/path/to/logos-execution-zone/lez/wallet/configs/debug \
+bash scripts/demo.sh
 ```
 
-## Interacting with Programs via `spel`
+See [`scripts/demo.sh`](scripts/demo.sh) for what each step does. Execution times appear in the sequencer logs as `execution time:` lines.
 
-### Generate an IDL
+---
 
-The IDL describes the program's instructions and can be used to interact with a deployed program.
+## Compute Unit Costs
 
-**Using the `idl-gen` crate** (no external toolchain required — this is what CI uses):
+Measured on local LEZ sequencer (standalone mode) with `RISC0_DEV_MODE=0`. Reproducible via `scripts/demo.sh` as above.
 
-```bash
-make idl
-```
+| Operation | Tx Hash | Block | Execution Time |
+|---|---|---|---|
+| `NewFungibleDefinitionWithAuthority` | `14197f9113ff000e81b7545c671942b286ef19bae7122ba280a0a620b8e01ca1` | 410 | 15.92ms |
+| `Mint` (authority active) | `99f00dbe40600d0c8bb745b74980c2241f1e7a6daa1291f5cef6b9ea27c82bd9` | 411 | 19.29ms |
+| `SetAuthority` (rotate) | `d865e26dfb5f82a5528aa9a0882307a73b00ffc4fa7825f0e7b5d0888d5c87fc` | 414 | 13.40ms |
+| `SetAuthority` (revoke to None) | `9408ef7ffd3efdbafbe2dd5bf243da32edd1a4d52f9709b5cfc92cb696b8956e` | 415 | 15.74ms |
+| `Mint` (rejected — authority revoked) | `5228cc62094a91e479b86a3aee067809f18674465ac72d8623d1ed770ab496de` | 416 | 9.84ms |
 
-**Using the `spel` CLI** (requires the SPEL toolchain):
+Rejected operations cost ~38% less than successful ones — execution halts at the authority guard before any account writes, confirming rejection is via the correct code path.
 
-```bash
-spel generate-idl programs/token/methods/guest/src/bin/token.rs > artifacts/token-idl.json
-spel generate-idl programs/amm/methods/guest/src/bin/amm.rs > artifacts/amm-idl.json
-spel generate-idl programs/ata/methods/guest/src/bin/ata.rs > artifacts/ata-idl.json
-spel generate-idl programs/stablecoin/methods/guest/src/bin/stablecoin.rs > artifacts/stablecoin-idl.json
-spel generate-idl programs/twap_oracle/methods/guest/src/bin/twap_oracle.rs > artifacts/twap_oracle-idl.json
-```
+> **Note:** These measurements use local sequencer executor timing with real proof generation (`RISC0_DEV_MODE=0`). Testnet CU measurements will be added once the testnet exposes this data.
 
-Generated IDL files are committed under `artifacts/`. CI will fail if a program's IDL is missing or out of date.
+---
 
-### Invoke Instructions
+## Video Demo
 
-Use `spel --idl <IDL> <INSTRUCTION> [ARGS...]` to call a deployed program instruction:
+Narrated walkthrough showing terminal output with `RISC0_DEV_MODE=0` active during proof generation:
+[https://youtu.be/mbNpOoOs7T4](https://youtu.be/mbNpOoOs7T4)
 
-```bash
-spel --idl artifacts/token-idl.json <instruction> [args...]
-spel --idl artifacts/amm-idl.json <instruction> [args...]
-spel --idl artifacts/ata-idl.json <instruction> [args...]
-spel --idl artifacts/stablecoin-idl.json <instruction> [args...]
-spel --idl artifacts/twap_oracle-idl.json <instruction> [args...]
-```
+---
+
+## License
+ 
+[MIT](LICENSE)

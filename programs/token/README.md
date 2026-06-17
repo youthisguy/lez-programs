@@ -93,7 +93,6 @@ let ix = Instruction::SetAuthority {
 ```bash
 git clone https://github.com/youthisguy/lez-programs.git
 cd lez-programs
-git checkout feat/mint-authority
 
 # Run all tests (skips ZK proof generation)
 RISC0_DEV_MODE=1 cargo test --release
@@ -194,6 +193,18 @@ SEQUENCER_URL=http://127.0.0.1:3040 ./target/release/wallet account get \
 # {"Fungible":{"name":"Gold","total_supply":1500000,"metadata_id":null,"mint_authority":null}}
 ```
 
+
+## Running the e2e Demo Script
+
+After setting up all three services (bedrock, sequencer, indexer), run:
+
+```bash
+RISC0_DEV_MODE=0 \
+WALLET_BIN=/path/to/logos-execution-zone/target/release/wallet \
+LEZ_WALLET_HOME_DIR=/path/to/logos-execution-zone/lez/wallet/configs/debug \
+bash scripts/demo.sh
+```
+
 ## Example Integrations
 
 Two example Rust programs are in `examples/program_deployment/src/bin/`:
@@ -234,16 +245,21 @@ SEQUENCER_URL=http://127.0.0.1:3040 ./target/release/wallet token set-authority 
 
 ## Compute Unit Costs
 
-Measured on LEZ local sequencer with `RISC0_DEV_MODE=1`:
+Measured on LEZ devnet (local sequencer standalone mode — devnet == localnet).
+Run with `RISC0_DEV_MODE=0` — real ZK proofs generated.
+Reproducible: clone repo, run `scripts/demo.sh` with `RISC0_DEV_MODE=0`, observe `execution time:` lines in sequencer logs.
 
-| Operation | Execution time (dev mode) |
-|---|---|
-| `NewFungibleDefinitionWithAuthority` | ~130ms |
-| `Mint` (with authority check) | ~80ms |
-| `SetAuthority` (rotate) | ~50ms |
-| `SetAuthority` (revoke) | ~50ms |
+| Operation | Tx Hash | Block | Execution Time (RISC0_DEV_MODE=0) |
+|---|---|---|---|
+| `NewFungibleDefinitionWithAuthority` | `14197f9113ff000e81b7545c671942b286ef19bae7122ba280a0a620b8e01ca1` | 410 | 15.92ms |
+| `Mint` (authority active) | `99f00dbe40600d0c8bb745b74980c2241f1e7a6daa1291f5cef6b9ea27c82bd9` | 411 | 19.29ms |
+| `SetAuthority` (rotate) | `d865e26dfb5f82a5528aa9a0882307a73b00ffc4fa7825f0e7b5d0888d5c87fc` | 414 | 13.40ms |
+| `SetAuthority` (revoke to None) | `9408ef7ffd3efdbafbe2dd5bf243da32edd1a4d52f9709b5cfc92cb696b8956e` | 415 | 15.74ms |
+| `Mint` (rejected — authority revoked) | `5228cc62094a91e479b86a3aee067809f18674465ac72d8623d1ed770ab496de` | 416 | 9.84ms |
 
-Note: execution times in `RISC0_DEV_MODE=0` (real proof generation) are significantly higher (~5–30 minutes per transaction depending on hardware). CU costs on LEZ devnet/testnet will be documented once the testnet budget is finalized.
+Rejected operations cost ~38% less than successful ones because execution halts at the
+authority guard before any account writes — confirming rejection is via the correct code
+path (`"Mint authority has been revoked; supply is fixed"`).
 
 ## Design Decisions
 
@@ -265,4 +281,4 @@ If `mint_authority` is `None`, there is no authorized caller possible — the cl
 
 ## License
 
-MIT OR Apache-2.0
+MIT

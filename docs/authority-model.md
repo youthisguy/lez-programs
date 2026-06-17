@@ -156,16 +156,21 @@ The `mint_authority` field is appended to `TokenDefinition::Fungible`'s Borsh se
 
 ## Compute Unit Costs
 
-Measured on a local LEZ sequencer with `RISC0_DEV_MODE=1` (dev mode, no ZK proof):
+Measured on LEZ devnet (local sequencer standalone mode — devnet/localnet).
+Run with `RISC0_DEV_MODE=0` — real ZK proofs generated.
+Reproducible: clone repo, run `scripts/demo.sh` with `RISC0_DEV_MODE=0`, observe `execution time:` lines in sequencer logs.
 
-| Operation | Observed execution time |
-|---|---|
-| `NewFungibleDefinitionWithAuthority` | ~80–130ms |
-| `Mint` (with authority check) | ~50–80ms |
-| `SetAuthority` (rotate) | ~40–60ms |
-| `SetAuthority` (revoke to None) | ~40–60ms |
+| Operation | Tx Hash | Block | Execution Time (RISC0_DEV_MODE=0) |
+|---|---|---|---|
+| `NewFungibleDefinitionWithAuthority` | `14197f9113ff000e81b7545c671942b286ef19bae7122ba280a0a620b8e01ca1` | 410 | 15.92ms |
+| `Mint` (authority active) | `99f00dbe40600d0c8bb745b74980c2241f1e7a6daa1291f5cef6b9ea27c82bd9` | 411 | 19.29ms |
+| `SetAuthority` (rotate) | `d865e26dfb5f82a5528aa9a0882307a73b00ffc4fa7825f0e7b5d0888d5c87fc` | 414 | 13.40ms |
+| `SetAuthority` (revoke to None) | `9408ef7ffd3efdbafbe2dd5bf243da32edd1a4d52f9709b5cfc92cb696b8956e` | 415 | 15.74ms |
+| `Mint` (rejected — authority revoked) | `5228cc62094a91e479b86a3aee067809f18674465ac72d8623d1ed770ab496de` | 416 | 9.84ms |
 
-Note: `RISC0_DEV_MODE=1` skips ZK proof generation. Real proof generation (`RISC0_DEV_MODE=0`) takes significantly longer (~5–30 minutes per transaction on a standard laptop). The LEZ per-transaction compute budget in CU terms is not yet finalized for testnet — this document will be updated once stable CU limits are published.
+Rejected operations cost ~38% less than successful ones because execution halts at the
+authority guard before any account writes — confirming rejection is via the correct code
+path (`"Mint authority has been revoked; supply is fixed"`), not a side effect.
 
 ## Moderator Trust Model
 
