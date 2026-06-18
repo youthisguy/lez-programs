@@ -42,10 +42,29 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply(),
                     metadata_id: None,
+                    mint_authority: Some(IdForTests::pool_definition_id()),
                 }),
                 nonce: Nonce(0),
             },
             is_authorized: true,
+            account_id: IdForTests::pool_definition_id(),
+        }
+    }
+
+    fn definition_account_active_authority_unauthorized() -> AccountWithMetadata {
+        AccountWithMetadata {
+            account: Account {
+                program_owner: TOKEN_PROGRAM_ID,
+                balance: 0u128,
+                data: Data::from(&TokenDefinition::Fungible {
+                    name: String::from("test"),
+                    total_supply: BalanceForTests::init_supply(),
+                    metadata_id: None,
+                    mint_authority: Some(IdForTests::pool_definition_id()),
+                }),
+                nonce: Nonce(0),
+            },
+            is_authorized: false,
             account_id: IdForTests::pool_definition_id(),
         }
     }
@@ -59,6 +78,7 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply(),
                     metadata_id: None,
+                    mint_authority: None,
                 }),
                 nonce: Nonce(0),
             },
@@ -76,6 +96,7 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply(),
                     metadata_id: None,
+                    mint_authority: None,
                 }),
                 nonce: Nonce(0),
             },
@@ -157,6 +178,7 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply_burned(),
                     metadata_id: None,
+                    mint_authority: Some(IdForTests::pool_definition_id()),
                 }),
                 nonce: Nonce(0),
             },
@@ -238,6 +260,7 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply_mint(),
                     metadata_id: None,
+                    mint_authority: Some(IdForTests::pool_definition_id()),
                 }),
                 nonce: Nonce(0),
             },
@@ -328,6 +351,7 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply(),
                     metadata_id: None,
+                    mint_authority: None,
                 }),
                 nonce: Nonce(0),
             },
@@ -918,9 +942,27 @@ fn test_mint_not_valid_definition_account() {
 }
 
 #[test]
-#[should_panic(expected = "Definition authorization is missing")]
+#[should_panic(expected = "Renounced: authority has been permanently revoked")]
 fn test_mint_missing_authorization() {
+    // mint_authority is None here, so the authority library correctly reports
+    // `Renounced` regardless of the is_authorized flag - there is no authority
+    // to satisfy in the first place.
     let definition_account = AccountForTests::definition_account_without_auth();
+    let holding_account = AccountForTests::holding_same_definition_without_authorization();
+    let _post_states = mint(
+        definition_account,
+        holding_account,
+        BalanceForTests::mint_success(),
+        TOKEN_PROGRAM_ID,
+    );
+}
+
+#[test]
+#[should_panic(expected = "Unauthorized: caller is not the current authority")]
+fn test_mint_fails_when_unauthorized_with_active_authority() {
+    // mint_authority is Some(...) here, but is_authorized is false, so the
+    // authority library must reject with `Unauthorized`, not `Renounced`.
+    let definition_account = AccountForTests::definition_account_active_authority_unauthorized();
     let holding_account = AccountForTests::holding_same_definition_without_authorization();
     let _post_states = mint(
         definition_account,

@@ -31,7 +31,7 @@ mod token {
     }
 
     /// Create a new fungible token definition without metadata.
-    /// Definition and holding targets must be uninitialized and authorized.
+    /// Supply is fixed — no mint authority is set.
     #[instruction]
     pub fn new_fungible_definition(
         definition_target_account: AccountWithMetadata,
@@ -50,8 +50,45 @@ mod token {
         ))
     }
 
+    /// Create a new fungible token definition with an optional mint authority.
+    /// `mint_authority: Some(id)` enables future minting; `None` fixes supply immediately.
+    #[instruction]
+    pub fn new_fungible_definition_with_authority(
+        definition_target_account: AccountWithMetadata,
+        holding_target_account: AccountWithMetadata,
+        name: String,
+        total_supply: u128,
+        mint_authority: Option<nssa_core::account::AccountId>,
+    ) -> SpelResult {
+        Ok(spel_framework::SpelOutput::execute(
+            token_program::new_definition::new_fungible_definition_with_authority(
+                definition_target_account,
+                holding_target_account,
+                name,
+                total_supply,
+                mint_authority,
+            ),
+            vec![],
+        ))
+    }
+
+    /// Rotate or revoke the mint authority on a fungible token definition.
+    /// `new_authority: Some(id)` rotates; `None` permanently revokes (fixed supply).
+    #[instruction]
+    pub fn set_authority(
+        definition_account: AccountWithMetadata,
+        new_authority: Option<nssa_core::account::AccountId>,
+    ) -> SpelResult {
+        Ok(spel_framework::SpelOutput::execute(
+            token_program::set_authority::set_authority(
+                definition_account,
+                new_authority,
+            ),
+            vec![],
+        ))
+    }
+
     /// Create a new fungible or non-fungible token definition with metadata.
-    /// Definition, holding, and metadata targets must be uninitialized and authorized.
     #[expect(
         clippy::boxed_local,
         reason = "boxed metadata keeps the instruction argument size bounded on the stack"
@@ -77,7 +114,6 @@ mod token {
     }
 
     /// Initialize a token holding account for a given token definition.
-    /// The holding target must be uninitialized and authorized.
     #[instruction]
     pub fn initialize_account(
         ctx: ProgramContext,
@@ -109,7 +145,7 @@ mod token {
     }
 
     /// Mint new tokens to the holder's account.
-    /// Fresh public holders must be explicitly authorized in the same transaction.
+    /// Requires an active mint authority on the token definition.
     #[instruction]
     pub fn mint(
         ctx: ProgramContext,
@@ -126,7 +162,6 @@ mod token {
     }
 
     /// Print a new NFT from the master copy.
-    /// The printed copy target must be uninitialized and authorized.
     #[instruction]
     pub fn print_nft(
         master_account: AccountWithMetadata,

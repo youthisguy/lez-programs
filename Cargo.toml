@@ -17,6 +17,7 @@ members = [
     "programs/stablecoin/methods",
     "programs/integration_tests",
     "tools/idl-gen",
+    "crates/lez-authority",
 ]
 exclude = [
     "programs/token/methods/guest",

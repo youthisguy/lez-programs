@@ -164,9 +164,10 @@ pub fn new_definition(
     let call_token_lp_lock = ChainedCall::new(
         token_program_id,
         vec![pool_lp_auth.clone(), lp_lock_holding_auth],
-        &token_core::Instruction::NewFungibleDefinition {
+        &token_core::Instruction::NewFungibleDefinitionWithAuthority {
             name: String::from("LP Token"),
             total_supply: MINIMUM_LIQUIDITY,
+            mint_authority: Some(pool_lp_auth.account_id),
         },
     )
     .with_pda_seeds(vec![
@@ -180,6 +181,7 @@ pub fn new_definition(
         name: String::from("LP Token"),
         total_supply: MINIMUM_LIQUIDITY,
         metadata_id: None,
+        mint_authority: Some(pool_lp_auth.account_id),
     });
 
     let call_token_lp_user = ChainedCall::new(

@@ -63,6 +63,21 @@ pub enum Instruction {
     /// - NFT Master Token Holding account (authorized),
     /// - NFT Printed Copy Token Holding account (uninitialized, authorized).
     PrintNft,
+    /// Create a new fungible token definition with a mint authority.
+    ///
+    /// Required accounts:
+    /// - Token Definition account (uninitialized, authorized),
+    /// - Token Holding account (uninitialized, authorized).
+    NewFungibleDefinitionWithAuthority {
+        name: String,
+        total_supply: u128,
+        mint_authority: Option<AccountId>,
+    },
+    /// Set or revoke the mint authority on a fungible token definition.
+    ///
+    /// Required accounts:
+    /// - Token Definition account (initialized, authorized).
+    SetAuthority { new_authority: Option<AccountId> },
 }
 
 #[derive(Serialize, Deserialize)]
@@ -84,6 +99,7 @@ pub enum TokenDefinition {
         name: String,
         total_supply: u128,
         metadata_id: Option<AccountId>,
+        mint_authority: Option<AccountId>,
     },
     NonFungible {
         name: String,

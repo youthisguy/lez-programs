@@ -1,0 +1,11 @@
+[package]
+name = "lez-authority"
+version = "0.1.0"
+edition = "2021"
+description = "Reusable single-admin authority library for LEZ programs (RFP-001)"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }
+
+[dev-dependencies]

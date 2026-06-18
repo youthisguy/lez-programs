@@ -334,6 +334,7 @@ impl Accounts {
                 name: String::from("test"),
                 total_supply: Balances::token_a_supply(),
                 metadata_id: None,
+                mint_authority: Some(Ids::token_a_definition()),
             }),
             nonce: Nonce(0),
         }
@@ -347,6 +348,7 @@ impl Accounts {
                 name: String::from("test"),
                 total_supply: Balances::token_b_supply(),
                 metadata_id: None,
+                mint_authority: Some(Ids::token_b_definition()),
             }),
             nonce: Nonce(0),
         }
@@ -360,6 +362,7 @@ impl Accounts {
                 name: String::from("LP Token"),
                 total_supply: Balances::token_lp_supply(),
                 metadata_id: None,
+                mint_authority: Some(Ids::token_lp_definition()),
             }),
             nonce: Nonce(0),
         }
@@ -636,6 +639,7 @@ impl Accounts {
                 name: String::from("LP Token"),
                 total_supply: Balances::token_lp_supply_add(),
                 metadata_id: None,
+                mint_authority: Some(Ids::token_lp_definition()),
             }),
             nonce: Nonce(0),
         }
@@ -728,6 +732,7 @@ impl Accounts {
                 name: String::from("LP Token"),
                 total_supply: Balances::token_lp_supply_remove(),
                 metadata_id: None,
+                mint_authority: Some(Ids::token_lp_definition()),
             }),
             nonce: Nonce(0),
         }
@@ -741,6 +746,7 @@ impl Accounts {
                 name: String::from("LP Token"),
                 total_supply: 0,
                 metadata_id: None,
+                mint_authority: None,
             }),
             nonce: Nonce(0),
         }
@@ -845,6 +851,7 @@ impl Accounts {
                 name: String::from("LP Token"),
                 total_supply: Balances::lp_supply_init(),
                 metadata_id: None,
+                mint_authority: Some(Ids::token_lp_definition()),
             }),
             nonce: Nonce(0),
         }
@@ -1173,12 +1180,7 @@ fn pool_definition(account: &Account) -> PoolDefinition {
 
 fn fungible_total_supply(account: &Account) -> u128 {
     let definition = TokenDefinition::try_from(&account.data).expect("expected token definition");
-    let TokenDefinition::Fungible {
-        name: _,
-        total_supply,
-        metadata_id: _,
-    } = definition
-    else {
+    let TokenDefinition::Fungible { total_supply, .. } = definition else {
         panic!("expected fungible token definition")
     };
 
